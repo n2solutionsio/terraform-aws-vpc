@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.x"
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Init
+        run: terraform init -backend=false
+
+      - name: Validate
+        run: terraform validate
+
+      - name: Validate examples/simple
+        working-directory: examples/simple
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate examples/complete
+        working-directory: examples/complete
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Test
+        run: terraform test
+
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Init TFLint
+        run: tflint --init
+        env:
+          TFLINT_CONFIG_FILE: ${{ github.workspace }}/.tflint.hcl
+
+      - name: Run TFLint
+        run: tflint --recursive
+        env:
+          TFLINT_CONFIG_FILE: ${{ github.workspace }}/.tflint.hcl
